@@ -1,0 +1,5 @@
+{
+    "network": "sample.edgeslist",
+    "realizations": 100,
+    "alpha": 1.0
+}
