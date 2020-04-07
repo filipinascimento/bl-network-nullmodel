@@ -3,64 +3,154 @@
 import sys
 import os.path
 import re
+import json
 import numpy as np
 from tqdm import tqdm
-
-def loadEdgesList(filename):
-	edgesList = []
-	with open(filename,"r") as fd:
-		for line in fd:
-			line = line.strip()
-			if line:
-				fromIndex, toIndex = [int(entry) for entry in re.split(r'\W+',line)]
-				edgesList.append((fromIndex,toIndex))
-	return edgesList
-
-def saveEdgesListTo(edgesList,filename):
-	with open(filename,"w") as fd:
-		fd.write("\n".join(["%s\t%s"%edge for edge in edgesList]))
+import igraph as ig
+import louvain
+# import infomap
 
 
-networkName = "sample.edgeslist"
-realizations = 100
-alpha = 1.0
+def check_symmetric(a, rtol=1e-05, atol=1e-08):
+	return np.allclose(a, a.T, rtol=rtol, atol=atol)
 
+def isFloat(value):
+	if(value is None):
+		return False
+	try:
+		numericValue = float(value)
+		return np.isfinite(numericValue)
+	except ValueError:
+		return False
+
+def loadCSVMatrix(filename):
+	return np.loadtxt(filename,delimiter=",")
+
+
+configFilename = "config.json"
 argCount = len(sys.argv)
-if(argCount>1):
-	networkName = sys.argv[1]
-	if(argCount>2):
-		realizations = int(sys.argv[2])
-	if(argCount>3):
-		alpha = float(sys.argv[3])
+if(argCount > 1):
+		configFilename = sys.argv[1]
 
-
-networkBaseName = os.path.splitext(os.path.basename(networkName))[0]
 outputDirectory = "output"
+csvOutputDirectory = os.path.join(outputDirectory, "csv")
+
 if(not os.path.exists(outputDirectory)):
-	os.makedirs(outputDirectory)
+		os.makedirs(outputDirectory)
 
-originalEdges = loadEdgesList(networkName)
-for realization in tqdm(range(realizations)):
-	edgesCount = len(originalEdges)
-	selectedEdges = list(np.where(np.random.random(edgesCount)<alpha)[0])
-	np.random.shuffle(selectedEdges)
-	newEdges = originalEdges.copy()
-	if(len(selectedEdges)>2):
-		for edgeIndex in selectedEdges:
-			while(True):
-				selectedEdge = newEdges[edgeIndex]
-				crossIndex = np.random.choice(selectedEdges); #selected from selected randomly
-				crossEdge = newEdges[crossIndex]
+if(not os.path.exists(csvOutputDirectory)):
+		os.makedirs(csvOutputDirectory)
 
-				selectedSource = min(selectedEdge)
-				selectedTarget = max(crossEdge)
-				crossSource = min(crossEdge)
-				crossTarget = max(selectedEdge)
+with open(configFilename, "r") as fd:
+		config = json.load(fd)
 
-				if(selectedSource!=selectedTarget and crossSource!=crossTarget):
-					newEdges[edgeIndex] = (selectedSource,selectedTarget)
-					newEdges[crossIndex] = (crossSource,crossTarget)
-					break
+# "index": "data/index.json",
+# "label": "data/label.json",
+# "mode": "data/csv"
+
+indexFilename = config["index"]
+labelFilename = config["label"]
+CSVDirectory = config["csv"]
+
+modelMethod = "random"
+weightMethod = "ignore"
+nullCount = 1000
+configurationMethod = "simple"
+
+if("method" in config):
+	modelMethod = config["method"].lower()
+
+if("weights" in config):
+	weightMethod = config["weights"].lower()
+
+if("count" in config and config["count"]):
+	nullCount = int(config["count"])
+
+if("configuration-method" in config):
+	configurationMethod = config["configurational-method"].lower()
+
+
+with open(indexFilename, "r") as fd:
+	indexData = json.load(fd)
+
+with open(labelFilename, "r") as fd:
+	labelData = json.load(fd)
+
+
+for entry in indexData:
+	entryFilename = entry["filename"]
+
+	alreadySigned = ("separated-sign" in entry) and entry["separated-sign"]
+
+	#inputfile,outputfile,signedOrNot
+	filenames = [entryFilename]
+	baseName,extension = os.path.splitext(entryFilename)
+
+	if(alreadySigned):
+		filenames += [baseName+"_negative%s"%(extension)]
+
+	# if("null-models" in entry):
+	# 	nullCount = int(entry["null-models"])
+	# 	filenames += [baseName+"-null_%d%s"%(i,extension) for i in range(nullCount)]
+	# 	if(alreadySigned):
+	# 		filenames += [baseName+"_negative-null_%d%s"%(i,extension) for i in range(nullCount)]
 	
-	saveEdgesListTo(newEdges,os.path.join(outputDirectory, "%s-nullA%.3f-%d.edgeslist"%(networkBaseName,alpha,realization)))
+	entry["null-models"] = nullCount;
+	for filename in tqdm(filenames):
+		networkBaseName,networkExtension = os.path.splitext(filename)
+		nullFilenames = [networkBaseName+"-null_%d%s"%(i,networkExtension) for i in range(nullCount)]
+		nullNetworks = []
+
+		adjacencyMatrix = loadCSVMatrix(os.path.join(CSVDirectory, filename))
+		directionMode=ig.ADJ_DIRECTED
+		weights = adjacencyMatrix
+		if(check_symmetric(adjacencyMatrix)):
+			directionMode=ig.ADJ_UPPER
+			weights = weights[np.triu_indices(weights.shape[0], k = 0)]
+		g = ig.Graph.Adjacency((adjacencyMatrix != 0).tolist(), directionMode)
+		weighted = False
+		if(not ((weights==0) | (weights==1)).all()):
+			g.es['weight'] = weights[weights != 0]
+			weighted = True
+		
+		for nullFilename in nullFilenames:
+			useDefaultWeights = True;
+			if(modelMethod=="random"):
+				gnull = ig.Graph.Erdos_Renyi(n=g.vcount(),m=g.ecount(),directed=g.is_directed());
+			elif(modelMethod=="barabasi"):
+				gnull = ig.Graph.Barabasi(n=g.vcount(),m=round(0.5*g.ecount()/g.vcount()),directed=g.is_directed());
+			elif(modelMethod=="configuration"):
+				if(g.is_directed()):
+					indegree = g.indegree()
+					outdegree = g.outdegree()
+					gnull = ig.Graph.Degree_Sequence(outdegree, indegree, method=configurationMethod)
+				else:
+					gnull = ig.Graph.Degree_Sequence(g.degree(), method=configurationMethod)
+			else:
+				raise ValueError("model %s is not valid."%modelMethod);
+
+			if(weighted and useDefaultWeights):
+				if(weightMethod == "sample"):
+					gnull.es["weight"] = np.random.choice(g.es['weight'],gnull.ecount());
+				elif(weightMethod == "average"):
+					gnull.es["weight"] = np.ones(gnull.ecount())*(np.mean(g.es['weight']));
+
+			with open(os.path.join(csvOutputDirectory,os.path.basename(nullFilename)), "w") as fd:
+				if("weight" in gnull.edge_attributes()):
+					outputData = gnull.get_adjacency(attribute='weight').data
+				else:
+					outputData = gnull.get_adjacency().data
+				np.savetxt(fd,outputData,delimiter=",")
+		with open(os.path.join(csvOutputDirectory,os.path.basename(filename)), "w") as fd:
+			if(weighted):
+				outputData = g.get_adjacency(attribute='weight').data
+			else:
+				outputData = g.get_adjacency().data
+			np.savetxt(fd,outputData,delimiter=",")
+
+with open(os.path.join(outputDirectory,"index.json"), "w") as fd:
+	json.dump(indexData,fd)
+
+with open(os.path.join(outputDirectory,"label.json"), "w") as fd:
+	json.dump(labelData,fd)
 

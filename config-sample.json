@@ -1,5 +1,8 @@
 {
-    "network": "sample.edgeslist",
-    "realizations": 100,
-    "alpha": 1.0
+    "index": "data/index.json",
+    "label": "data/label.json",
+    "csv": "data/csv",
+    "method":"configuration",
+    "count": 10,
+    "weights": "average"
 }
