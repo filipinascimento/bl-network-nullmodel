@@ -67,7 +67,7 @@ if("count" in config and config["count"]):
 	nullCount = int(config["count"])
 
 if("configuration-method" in config):
-	configurationMethod = config["configurational-method"].lower()
+	configurationMethod = config["configuration-method"].lower()
 
 
 with open(indexFilename, "r") as fd:
