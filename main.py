@@ -7,7 +7,6 @@ import json
 import numpy as np
 from tqdm import tqdm
 import igraph as ig
-import louvain
 # import infomap
 
 
@@ -67,7 +66,7 @@ if("count" in config and config["count"]):
 	nullCount = int(config["count"])
 
 if("configuration-method" in config):
-	configurationMethod = config["configurational-method"].lower()
+	configurationMethod = config["configuration-method"].lower()
 
 
 with open(indexFilename, "r") as fd:
@@ -94,8 +93,15 @@ for entry in indexData:
 	# 	filenames += [baseName+"-null_%d%s"%(i,extension) for i in range(nullCount)]
 	# 	if(alreadySigned):
 	# 		filenames += [baseName+"_negative-null_%d%s"%(i,extension) for i in range(nullCount)]
-	
+
+	if("community" in entry):
+		del entry["community"];
+
+	if("properties" in entry):
+		del entry["properties"];
+
 	entry["null-models"] = nullCount;
+	
 	for filename in tqdm(filenames):
 		networkBaseName,networkExtension = os.path.splitext(filename)
 		nullFilenames = [networkBaseName+"-null_%d%s"%(i,networkExtension) for i in range(nullCount)]
@@ -141,6 +147,9 @@ for entry in indexData:
 				else:
 					outputData = gnull.get_adjacency().data
 				np.savetxt(fd,outputData,delimiter=",")
+				# print(np.average(g.degree()),np.average(gnull.degree()))
+				# print(np.sum(np.array(outputData)>0),np.sum(np.array(g.get_adjacency(attribute='weight').data)>0))
+
 		with open(os.path.join(csvOutputDirectory,os.path.basename(filename)), "w") as fd:
 			if(weighted):
 				outputData = g.get_adjacency(attribute='weight').data

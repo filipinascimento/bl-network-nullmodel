@@ -3,6 +3,7 @@
     "label": "data/label.json",
     "csv": "data/csv",
     "method":"configuration",
-    "count": 10,
-    "weights": "average"
+    "count": 100,
+    "weights": "average",
+    "configuration-method": "no_multiple"
 }
