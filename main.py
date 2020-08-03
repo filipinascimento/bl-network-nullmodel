@@ -2,28 +2,69 @@
 
 import sys
 import os.path
+from os.path import join as PJ
 import re
 import json
 import numpy as np
 from tqdm import tqdm
 import igraph as ig
+import jgf
 # import infomap
+import math
 
 
-def check_symmetric(a, rtol=1e-05, atol=1e-08):
-	return np.allclose(a, a.T, rtol=rtol, atol=atol)
 
-def isFloat(value):
-	if(value is None):
-		return False
-	try:
-		numericValue = float(value)
-		return np.isfinite(numericValue)
-	except ValueError:
-		return False
+class NumpyEncoder(json.JSONEncoder):
+	def default(self, obj):
+		if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
+			np.int16, np.int32, np.int64, np.uint8,
+			np.uint16, np.uint32, np.uint64)):
+			ret = int(obj)
+		elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
+			ret = float(obj)
+		elif isinstance(obj, (np.ndarray,)): 
+			ret = obj.tolist()
+		else:
+			ret = json.JSONEncoder.default(self, obj)
 
-def loadCSVMatrix(filename):
-	return np.loadtxt(filename,delimiter=",")
+		if isinstance(ret, (float)):
+			if math.isnan(ret):
+				ret = None
+
+		if isinstance(ret, (bytes, bytearray)):
+			ret = ret.decode("utf-8")
+
+		return ret
+results = {"errors": [], "warnings": [], "brainlife": [], "datatype_tags": [], "tags": []}
+
+def warning(msg):
+	global results
+	results['warnings'].append(msg) 
+	#results['brainlife'].append({"type": "warning", "msg": msg}) 
+	print(msg)
+
+def error(msg):
+	global results
+	results['errors'].append(msg) 
+	#results['brainlife'].append({"type": "error", "msg": msg}) 
+	print(msg)
+
+def exitApp():
+	global results
+	with open("product.json", "w") as fp:
+		json.dump(results, fp, cls=NumpyEncoder)
+	if len(results["errors"]) > 0:
+		sys.exit(1)
+	else:
+		sys.exit()
+
+def exitAppWithError(msg):
+	global results
+	results['errors'].append(msg) 
+	#results['brainlife'].append({"type": "error", "msg": msg}) 
+	print(msg)
+	exitApp()
+
 
 
 configFilename = "config.json"
@@ -32,24 +73,14 @@ if(argCount > 1):
 		configFilename = sys.argv[1]
 
 outputDirectory = "output"
-csvOutputDirectory = os.path.join(outputDirectory, "csv")
+outputFile = PJ(outputDirectory,"network.json.gz")
 
 if(not os.path.exists(outputDirectory)):
 		os.makedirs(outputDirectory)
 
-if(not os.path.exists(csvOutputDirectory)):
-		os.makedirs(csvOutputDirectory)
-
 with open(configFilename, "r") as fd:
 		config = json.load(fd)
 
-# "index": "data/index.json",
-# "label": "data/label.json",
-# "mode": "data/csv"
-
-indexFilename = config["index"]
-labelFilename = config["label"]
-CSVDirectory = config["csv"]
 
 modelMethod = "random"
 weightMethod = "ignore"
@@ -68,98 +99,46 @@ if("count" in config and config["count"]):
 if("configuration-method" in config):
 	configurationMethod = config["configuration-method"].lower()
 
+networks = jgf.igraph.load(config["network"], compressed=True)
 
-with open(indexFilename, "r") as fd:
-	indexData = json.load(fd)
+if(len(networks)>1):
+	warning("Multiple networks were found in the network data. Null models are being generated only for the first network entry in the list.")
 
-with open(labelFilename, "r") as fd:
-	labelData = json.load(fd)
+outputNetworks = []
 
+if(len(networks)==0):
+	error("No network found in data. Null models requires one network in the file.")
+else:	
+	network = networks[0]
+	for _ in range(nullCount):
+		if(modelMethod=="random"):
+			gnull = ig.Graph.Erdos_Renyi(n=network.vcount(),m=network.ecount(),directed=network.is_directed())
+		elif(modelMethod=="barabasi"):
+			gnull = ig.Graph.Barabasi(n=network.vcount(),m=round(0.5*network.ecount()/network.vcount()),directed=network.is_directed())
+		elif(modelMethod=="configuration"):
+			if(network.is_directed()):
+				indegree = network.indegree()
+				outdegree = network.outdegree()
+				gnull = ig.Graph.Degree_Sequence(outdegree, indegree, method=configurationMethod)
+			else:
+				gnull = ig.Graph.Degree_Sequence(network.degree(), method=configurationMethod)
+		else:
+			exitAppWithError("model %s is not valid."%modelMethod)
 
-for entry in indexData:
-	entryFilename = entry["filename"]
-
-	alreadySigned = ("separated-sign" in entry) and entry["separated-sign"]
-
-	#inputfile,outputfile,signedOrNot
-	filenames = [entryFilename]
-	baseName,extension = os.path.splitext(entryFilename)
-
-	if(alreadySigned):
-		filenames += [baseName+"_negative%s"%(extension)]
-
-	# if("null-models" in entry):
-	# 	nullCount = int(entry["null-models"])
-	# 	filenames += [baseName+"-null_%d%s"%(i,extension) for i in range(nullCount)]
-	# 	if(alreadySigned):
-	# 		filenames += [baseName+"_negative-null_%d%s"%(i,extension) for i in range(nullCount)]
-
-	if("community" in entry):
-		del entry["community"];
-
-	if("properties" in entry):
-		del entry["properties"];
-
-	entry["null-models"] = nullCount;
-	
-	for filename in tqdm(filenames):
-		networkBaseName,networkExtension = os.path.splitext(filename)
-		nullFilenames = [networkBaseName+"-null_%d%s"%(i,networkExtension) for i in range(nullCount)]
-		nullNetworks = []
-
-		adjacencyMatrix = loadCSVMatrix(os.path.join(CSVDirectory, filename))
-		directionMode=ig.ADJ_DIRECTED
-		weights = adjacencyMatrix
-		if(check_symmetric(adjacencyMatrix)):
-			directionMode=ig.ADJ_UPPER
-			weights = weights[np.triu_indices(weights.shape[0], k = 0)]
-		g = ig.Graph.Adjacency((adjacencyMatrix != 0).tolist(), directionMode)
-		weighted = False
-		if(not ((weights==0) | (weights==1)).all()):
-			g.es['weight'] = weights[weights != 0]
-			weighted = True
+		if("weight" in network.edge_attributes()):
+			if(weightMethod == "sample"):
+				gnull.es["weight"] = np.random.choice(network.es['weight'],network.ecount())
+			elif(weightMethod == "average"):
+				gnull.es["weight"] = np.ones(network.ecount())*(np.mean(network.es['weight']))
 		
-		for nullFilename in nullFilenames:
-			useDefaultWeights = True;
-			if(modelMethod=="random"):
-				gnull = ig.Graph.Erdos_Renyi(n=g.vcount(),m=g.ecount(),directed=g.is_directed());
-			elif(modelMethod=="barabasi"):
-				gnull = ig.Graph.Barabasi(n=g.vcount(),m=round(0.5*g.ecount()/g.vcount()),directed=g.is_directed());
-			elif(modelMethod=="configuration"):
-				if(g.is_directed()):
-					indegree = g.indegree()
-					outdegree = g.outdegree()
-					gnull = ig.Graph.Degree_Sequence(outdegree, indegree, method=configurationMethod)
-				else:
-					gnull = ig.Graph.Degree_Sequence(g.degree(), method=configurationMethod)
-			else:
-				raise ValueError("model %s is not valid."%modelMethod);
+		
+		gnull["null-models"] = nullCount
+		gnull["null-models-method"] = modelMethod
+		gnull["null-models-weightMethod"] = weightMethod
+		gnull["null-models-configurationMethod"] = configurationMethod
+		outputNetworks.append(gnull)
 
-			if(weighted and useDefaultWeights):
-				if(weightMethod == "sample"):
-					gnull.es["weight"] = np.random.choice(g.es['weight'],gnull.ecount());
-				elif(weightMethod == "average"):
-					gnull.es["weight"] = np.ones(gnull.ecount())*(np.mean(g.es['weight']));
+jgf.igraph.save(outputNetworks,outputFile, compressed=True)
 
-			with open(os.path.join(csvOutputDirectory,os.path.basename(nullFilename)), "w") as fd:
-				if("weight" in gnull.edge_attributes()):
-					outputData = gnull.get_adjacency(attribute='weight').data
-				else:
-					outputData = gnull.get_adjacency().data
-				np.savetxt(fd,outputData,delimiter=",")
-				# print(np.average(g.degree()),np.average(gnull.degree()))
-				# print(np.sum(np.array(outputData)>0),np.sum(np.array(g.get_adjacency(attribute='weight').data)>0))
-
-		with open(os.path.join(csvOutputDirectory,os.path.basename(filename)), "w") as fd:
-			if(weighted):
-				outputData = g.get_adjacency(attribute='weight').data
-			else:
-				outputData = g.get_adjacency().data
-			np.savetxt(fd,outputData,delimiter=",")
-
-with open(os.path.join(outputDirectory,"index.json"), "w") as fd:
-	json.dump(indexData,fd)
-
-with open(os.path.join(outputDirectory,"label.json"), "w") as fd:
-	json.dump(labelData,fd)
+exitApp()
 
