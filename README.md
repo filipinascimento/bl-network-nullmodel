@@ -10,8 +10,8 @@ Generates a esemble of networks according to null models that try to reproduce t
 <!-- ### Contributors
 - Franco Pestilli (franpest@indiana.edu) -->
 
-<!-- ### Funding  -->
-<!-- [![NSF-BCS-1734853](https://img.shields.io/badge/NSF_BCS-1734853-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1734853) -->
+### Funding
+[![NIH-1R01EB029272-01](https://img.shields.io/badge/NIH-1R01EB029272_01-blue.svg)](https://www.nibib.nih.gov/node/113361)
 
 
 ### Citations
@@ -56,7 +56,7 @@ A sample dataset is provided in folder `data` and `config-sample.json`
 
 ## Output
 
-The output is a conmat with the null model connectivities as files ending with `_null-#` in the `csv` directory.
+The output is a network with the null model.
 
 
 <!-- #### Product.json
