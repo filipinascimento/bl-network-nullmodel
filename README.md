@@ -10,13 +10,16 @@ Generates a esemble of networks according to null models that try to reproduce t
 ### Contributors
 - [Franco Pestilli](https://liberalarts.utexas.edu/psychology/faculty/fp4834)
 
-### Funding
-[![NIH-1R01EB029272-01](https://img.shields.io/badge/NIH-1R01EB029272_01-blue.svg)](https://projectreporter.nih.gov/project_info_description.cfm?aid=9916138&icde=52173380&ddparam=&ddvalue=&ddsub=&cr=1&csb=default&cs=ASC&pball=)
 
+### Funding
+We kindly ask that you acknowledge the funding below in your publications and code reusing this code.
+
+[![NIH-NIBIB-R01EB029272](https://img.shields.io/badge/NIH_NIBIB-R01EB029272-green.svg)](https://grantome.com/grant/NIH/R01-EB029272-01)
 
 ### Citations
+1. Avesani, P., McPherson, B., Hayashi, S. et al. The open diffusion data derivatives, brain data upcycling via integrated publishing of derivatives and reproducible open cloud services. Sci Data 6, 69 (2019). [https://doi.org/10.1038/s41597-019-0073-y](https://doi.org/10.1038/s41597-019-0073-y)
 
-1. Barabási, Albert-László. Network science. Cambridge university press, 2016.
+2. Barabási, Albert-László. Network science. Cambridge university press, 2016.
 Harvard [http://barabasi.com/networksciencebook/](http://barabasi.com/networksciencebook/)
 
 
