@@ -5,13 +5,14 @@
 Generates a esemble of networks according to null models that try to reproduce the data. Erdos reyni (random), Barabási-Albert and Configuration model are implemented.
 
 ### Authors
-- [Filipi N. Silva](filsilva@iu.edu)
+- [Filipi N. Silva](https://filipinascimento.github.io)
 
-<!-- ### Contributors
-- Franco Pestilli (franpest@indiana.edu) -->
+### Contributors
+- [Franco Pestilli](https://liberalarts.utexas.edu/psychology/faculty/fp4834)
 
-<!-- ### Funding  -->
-<!-- [![NSF-BCS-1734853](https://img.shields.io/badge/NSF_BCS-1734853-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1734853) -->
+
+### Funding
+[![NIH-1R01EB029272-01](https://img.shields.io/badge/NIH-1R01EB029272_01-blue.svg)](https://projectreporter.nih.gov/project_info_description.cfm?aid=9916138&icde=52173380&ddparam=&ddvalue=&ddsub=&cr=1&csb=default&cs=ASC&pball=)
 
 
 ### Citations
@@ -56,12 +57,8 @@ A sample dataset is provided in folder `data` and `config-sample.json`
 
 ## Output
 
-The output is a conmat with the null model connectivities as files ending with `_null-#` in the `csv` directory.
+The output is a `network` data type containing only the null models. 
 
-
-<!-- #### Product.json
-
-The secondary output of this app is `product.json`. This file allows web interfaces, DB and API calls on the results of the processing.  -->
 
 ### Dependencies
 
