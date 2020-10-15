@@ -10,7 +10,6 @@ Generates a esemble of networks according to null models that try to reproduce t
 ### Contributors
 - [Franco Pestilli](https://liberalarts.utexas.edu/psychology/faculty/fp4834)
 
-
 ### Funding
 [![NIH-1R01EB029272-01](https://img.shields.io/badge/NIH-1R01EB029272_01-blue.svg)](https://projectreporter.nih.gov/project_info_description.cfm?aid=9916138&icde=52173380&ddparam=&ddvalue=&ddsub=&cr=1&csb=default&cs=ASC&pball=)
 
@@ -57,7 +56,7 @@ A sample dataset is provided in folder `data` and `config-sample.json`
 
 ## Output
 
-The output is a `network` data type containing only the null models. 
+The output is a `network` datatype containing just the generated realizations of the null model.
 
 
 ### Dependencies
