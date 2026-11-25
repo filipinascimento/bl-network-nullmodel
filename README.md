@@ -2,6 +2,51 @@
 [![Run on Brainlife.io](https://img.shields.io/badge/Brainlife-bl.app.1-blue.svg)](https://doi.org/10.25663/brainlife.app.277)
 
 # Network Null-Models
+
+<!-- brainlife-app:begin (generated from the App manifest; edit the manifest, not this block) -->
+
+> **Generates an ensemble of null-model networks (Erdos-Renyi, Barabasi-Albert or configuration model) matching an input network, using igraph.**
+
+Reads a network (JGF) and, for each network in it, generates count random realisations with the chosen null model; weights can be ignored, sampled or averaged from the original. Use it to build null distributions for network measures computed on connectomes.
+
+| | |
+|---|---|
+| 📥 **Inputs** | `generic/network` |
+| 📤 **Outputs** | `generic/network` |
+| 🐳 **Container** | `filsilva/cxnetwork:0.2.0` |
+| ⚙️ **Resources** | 1 CPUs |
+| 🔗 **Run it** | [doi.org/10.25663/brainlife.app.277](https://doi.org/10.25663/brainlife.app.277) |
+
+#### 📥 Inputs
+
+| Input | Datatype | Required | Description |
+|---|---|---|---|
+| `network` | `generic/network` | yes | Input network |
+
+#### 📤 Outputs
+
+| Output | Datatype | Description |
+|---|---|---|
+| `output` | `generic/network` | Network file containing the realizations of the null-model. |
+
+<details>
+<summary><b>⚙️ Parameters</b> (4)</summary>
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `count` | number | `100` | Number of null model samples to be generated. |
+| `method` | enum | `random` | Model to generate the null samples. - random: ER network with same number of nodes and edges as the original network. - barabasi: Scale-free model with similar number of nodes and edges as the original network. - configuration: Generates a network with same (or similar) degree sequence as the original. Options: `random`, `barabasi`, `configuration`. |
+| `weights` | enum | `ignore` | How weights should be handled? Options: `ignore`, `sample`, `average`. |
+| `configuration-method` | enum | `simple` | If configuration model is selected, this selects the method to be used. - Simple: The generated null model may have self loops and multiple edges. - No self-loops and multiple edges: Avoids creating self-loops and multiple edges. (Much slower than "simple") - Monte-Carlo: Uses Monte-Carlo method to randomize the networks. Based on the Fabien Viger's method. Options: `simple`, `no_multiple`, `vl`. |
+
+</details>
+
+📚 **References used by this App:**
+- Avesani P, McPherson B, Hayashi S, et al. The open diffusion data derivatives, brain data upcycling via integrated publishing of derivatives and reproducible open cloud services. Sci Data 6, 69 (2019). [doi:10.1038/s41597-019-0073-y](https://doi.org/10.1038/s41597-019-0073-y)
+- Barabasi A-L. Network science. Cambridge University Press (2016).
+
+<!-- brainlife-app:end -->
+
 Generates a esemble of networks according to null models that try to reproduce the data. Erdos reyni (random), Barabási-Albert and Configuration model are implemented.
 
 ### Authors
